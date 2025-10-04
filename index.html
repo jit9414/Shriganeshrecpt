@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Receipt - Shri Ganesh Motors</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      line-height: 1.6;
+    }
+
+    .receipt {
+      width: 780px;
+      max-width: 100%;
+      border: 1px solid #000;
+      padding: 18px;
+    }
+
+    .header {
+      text-align: center;
+    }
+    .header h2 {
+      margin: 4px 0;
+      text-transform: uppercase;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    /* --- Inputs styled to LOOK like plain text (no visible boxes) --- */
+    input[type="text"],
+    input[type="number"] {
+      border: none;
+      background: transparent;
+      padding: 4px 6px;
+      font-size: 14px;
+      outline: none;            /* remove default focus outline */
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+
+    /* Give a small subtle focus indicator but not a box (screen only) */
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      box-shadow: inset 0 -1px 0 rgba(0,0,0,0.08);
+    }
+
+    /* For the numeric "Amount" field keep alignment and a little width */
+    .amount-input {
+      width: 120px;
+      text-align: left;
+      display: inline-block;
+    }
+
+    .title {
+      font-weight: bold;
+    }
+
+    .sign {
+      margin-top: 30px;
+      text-align: right;
+      font-weight: bold;
+    }
+
+    .note {
+      margin-top: 22px;
+      font-size: 12px;
+      border-top: 1px solid #000;
+      padding-top: 6px;
+    }
+
+    /* Print button style (on-screen only) */
+    #printBtn {
+      margin-top: 14px;
+      padding: 8px 14px;
+      font-size: 14px;
+      background: #000;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    #printBtn:hover { background: #222; }
+
+    /* ================= PRINT STYLES =================
+       On print: remove all visual input borders/boxes and hide print button.
+       Also ensure fonts remain crisp and layout fits page.
+    */
+    @media print {
+      body {
+        margin: 8mm;
+      }
+      /* hide the print button from printed page */
+      #printBtn { display: none !important; }
+
+      /* Ensure the receipt border prints but inputs show as plain text */
+      input[type="text"],
+      input[type="number"] {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        -webkit-box-shadow: none !important;
+        outline: none !important;
+      }
+
+      /* Remove any subtle focus indicator that might show */
+      input:focus { box-shadow: none !important; }
+
+      /* Slightly reduce font-size for better fit (optional) */
+      .receipt { font-size: 12.5px; border: 1px solid #000; }
+    }
+
+    /* make "The sum of Rupees" words stand out (uppercase handled by JS) */
+    #amountInWords { font-weight: normal; margin-left: 6px; }
+  </style>
+</head>
+<body>
+  <div class="receipt" id="receiptArea">
+    <div class="top-bar">
+      <div>REC NO: <span id="receiptNo"></span></div>
+      <div>Subject JODHPUR Jurisdiction.</div>
+    </div>
+
+    <div class="header">
+      <h2>SHRI GANESH MOTORS</h2>
+      <p style="margin:2px 0;">
+        NEAR BUS STATION, BILARA ROAD BORUNDA 342604 (RAJ.)<br>
+        M. 9929209414<br>
+        <strong>GST NO: 08CZKPB5527L1Z2</strong>
+      </p>
+    </div>
+
+    <p class="right">Date: <input type="text" id="dateField" style="width:140px;"></p>
+
+    <p>
+      <span class="title">Received with thanks from</span>
+      <!-- full-width input but visually plain -->
+      <input type="text" id="receivedFrom" style="width:72%; margin-left:10px;">
+    </p>
+
+    <p>
+      <span class="title">The sum of Rupees</span>
+      <span id="amountInWords">__________________________</span>
+    </p>
+
+    <p>
+      <span class="title">By Vash/Cheque/Draft/P.O. No.</span>
+      <input type="text" id="chequeNo" style="width:58%; margin-left:10px;">
+    </p>
+
+    <p>
+      <span class="title">On account of</span>
+      <input type="text" id="accountOf" style="width:70%; margin-left:10px;">
+    </p>
+
+    <p>
+      <span class="title">Amount (₹):</span>
+      <input type="number" id="amountNumber" class="amount-input" value="" min="0" step="1">
+    </p>
+
+    <div class="sign">
+      For : <b>SHRI GANESH MOTORS</b><br><br>
+      Proprietor/Manager
+    </div>
+
+    <div class="note">
+      Note : The increase in cost at the time of delivery would be customer’s responsibility.
+    </div>
+  </div>
+
+  <button id="printBtn" onclick="printReceipt()">🖨️ Print Receipt</button>
+
+  <script>
+    // ===== Auto Date (dd/mm/yyyy) =====
+    (function setDate(){
+      const today = new Date();
+      const d = String(today.getDate()).padStart(2,'0');
+      const m = String(today.getMonth()+1).padStart(2,'0');
+      const y = today.getFullYear();
+      document.getElementById('dateField').value = d + '/' + m + '/' + y;
+    })();
+
+    // ===== Auto Increment Receipt No (stored in localStorage) =====
+    (function setReceiptNo(){
+      let r = localStorage.getItem('receiptNo');
+      if(!r) r = 1;
+      else r = parseInt(r) + 1;
+      document.getElementById('receiptNo').innerText = r;
+      localStorage.setItem('receiptNo', r);
+    })();
+
+    // ===== Number to Words (Indian system) =====
+    function inWords(num) {
+      num = Number(num);
+      if (isNaN(num) || num === 0) return "ZERO";
+      const a = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten",
+        "Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+      const b = ["","", "Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+
+      function twoDigits(n) {
+        if (n < 20) return a[n];
+        return (b[Math.floor(n/10)] + (n%10 ? " "+a[n%10] : ""));
+      }
+
+      function threeDigits(n) {
+        let str = "";
+        if (n > 99) {
+          str += a[Math.floor(n/100)] + " Hundred";
+          if (n%100) str += " and ";
+        }
+        if (n%100) str += twoDigits(n%100);
+        return str;
+      }
+
+      let result = "";
+      const crore = Math.floor(num / 10000000);
+      if (crore) { result += threeDigits(crore) + " Crore "; }
+      const lakh = Math.floor((num % 10000000) / 100000);
+      if (lakh) { result += threeDigits(lakh) + " Lakh "; }
+      const thousand = Math.floor((num % 100000) / 1000);
+      if (thousand) { result += threeDigits(thousand) + " Thousand "; }
+      const hundreds = Math.floor((num % 1000) / 1);
+      if (hundreds) { result += threeDigits(hundreds); }
+
+      result = result.replace(/\s+/g,' ').trim();
+      return result.toUpperCase();
+    }
+
+    // ===== When Amount Number changed =====
+    const amountInput = document.getElementById('amountNumber');
+    const wordsSpan = document.getElementById('amountInWords');
+
+    function updateAmountWords() {
+      const val = amountInput.value;
+      if (val === "" || isNaN(Number(val)) || Number(val) === 0) {
+        wordsSpan.innerText = "__________________________";
+      } else {
+        wordsSpan.innerText = inWords(val) + " ONLY";
+      }
+    }
+
+    amountInput.addEventListener('input', updateAmountWords);
+
+    // Make sure words reflect initial value if exists
+    updateAmountWords();
+
+    // ===== Print function (hides button via CSS @media print) =====
+    function printReceipt() {
+      window.print();
+    }
+
+    // Optional: allow pressing Enter in amount field to blur and update words
+    amountInput.addEventListener('keydown', function(e){
+      if (e.key === 'Enter') { this.blur(); updateAmountWords(); }
+    });
+
+  </script>
+</body>
+</html>
